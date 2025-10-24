@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Экспертная оценка онлайн</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Экспертная оценка онлайн</h1>
+            <div class="subtitle">Система коллективного принятия решений</div>
+        </header>
+        
+        <div class="content">
+            <!-- Шаг 1: Создание сессии -->
+            <div class="step active" id="step1">
+                <h2>Создание сессии оценки</h2>
+                
+                <div class="form-group">
+                    <label for="sessionName">Название сессии:</label>
+                    <input type="text" id="sessionName" placeholder="Например: Выбор поставщика 2024">
+                </div>
+                
+                <div class="form-group">
+                    <label for="expertsCount">Количество экспертов:</label>
+                    <input type="number" id="expertsCount" min="1" max="50" value="5">
+                </div>
+                
+                <div class="form-group">
+                    <label for="objectsCount">Количество объектов:</label>
+                    <input type="number" id="objectsCount" min="1" max="20" value="4">
+                </div>
+                
+                <div class="form-group">
+                    <label>Метод оценки:</label>
+                    <select id="evaluationMethod">
+                        <option value="direct">Непосредственная оценка (0-10)</option>
+                        <option value="ranking">Ранжирование</option>
+                        <option value="pairwise">Парное сравнение</option>
+                    </select>
+                </div>
+                
+                <button class="btn btn-primary" onclick="createSession()">Создать сессию</button>
+            </div>
+            
+            <!-- Шаг 2: Приглашение экспертов -->
+            <div class="step" id="step2">
+                <h2>Пригласите экспертов</h2>
+                <p>Сессия: <strong id="currentSessionName"></strong></p>
+                
+                <div class="invitation-container">
+                    <div class="invitation-card">
+                        <h3>🔗 Ссылка для присоединения</h3>
+                        <div class="link-container">
+                            <input type="text" id="invitationLink" readonly>
+                            <button class="btn btn-copy" onclick="copyLink()">Копировать</button>
+                        </div>
+                    </div>
+                    
+                    <div class="invitation-card">
+                        <h3>📱 QR-код</h3>
+                        <div id="qrcode"></div>
+                        <p>Отсканируйте для быстрого присоединения</p>
+                    </div>
+                    
+                    <div class="invitation-card">
+                        <h3>👥 Код сессии</h3>
+                        <div class="session-code" id="sessionCodeDisplay">---</div>
+                        <p>Эксперты могут ввести этот код на главной странице</p>
+                    </div>
+                </div>
+                
+                <div class="experts-progress">
+                    <h3>Подключившиеся эксперты</h3>
+                    <div id="connectedExperts" class="experts-list">
+                        <div class="empty-state">Пока никто не присоединился</div>
+                    </div>
+                    <div class="progress-info">
+                        <span id="connectedCount">0</span> из <span id="totalExperts">5</span> экспертов
+                    </div>
+                </div>
+                
+                <div class="navigation">
+                    <button class="btn btn-secondary" onclick="prevStep(1)">Назад</button>
+                    <button class="btn btn-primary" onclick="startVoting()" id="startVotingBtn" disabled>
+                        Начать оценку
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Шаг 3: Голосование (админ просмотр) -->
+            <div class="step" id="step3">
+                <h2>Процесс оценки</h2>
+                <p>Сессия: <strong id="votingSessionName"></strong></p>
+                
+                <div class="voting-progress">
+                    <div class="progress-header">
+                        <h3>Статус голосования</h3>
+                        <div class="timer" id="votingTimer">--:--</div>
+                    </div>
+                    
+                    <div id="votingProgress" class="progress-grid">
+                        <!-- Динамически заполняется -->
+                    </div>
+                </div>
+                
+                <div class="navigation">
+                    <button class="btn btn-secondary" onclick="prevStep(2)">Назад к приглашениям</button>
+                    <button class="btn btn-primary" onclick="showResults()" id="showResultsBtn" disabled>
+                        Показать результаты
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Шаг 4: Результаты -->
+            <div class="step" id="step4">
+                <h2>Результаты оценки</h2>
+                <p>Сессия: <strong id="resultsSessionName"></strong></p>
+                
+                <div id="resultsContainer">
+                    <!-- Результаты будут здесь -->
+                </div>
+                
+                <div class="session-actions">
+                    <button class="btn btn-primary" onclick="createNewSession()">Новая сессия</button>
+                    <button class="btn btn-secondary" onclick="exportResults()">Экспорт результатов</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Страница эксперта -->
+    <div class="expert-page" id="expertPage" style="display: none;">
+        <div class="container">
+            <header>
+                <h1>Экспертная оценка</h1>
+                <div class="subtitle">Присоединитесь к сессии оценки</div>
+            </header>
+            
+            <div class="content">
+                <!-- Форма присоединения -->
+                <div class="step active" id="expertJoin">
+                    <h2>Присоединиться к сессии</h2>
+                    
+                    <div class="form-group">
+                        <label for="expertName">Ваше имя:</label>
+                        <input type="text" id="expertName" placeholder="Введите ваше имя">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="sessionCode">Код сессии:</label>
+                        <input type="text" id="sessionCode" placeholder="Введите код сессии">
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="joinSession()">Присоединиться</button>
+                    
+                    <div class="alternative-join">
+                        <p>Или перейдите по ссылке, которую вам отправил администратор</p>
+                    </div>
+                </div>
+                
+                <!-- Голосование эксперта -->
+                <div class="step" id="expertVoting">
+                    <h2>Оценка объектов</h2>
+                    <p>Сессия: <strong id="expertSessionName"></strong></p>
+                    
+                    <div id="expertVotingContainer">
+                        <!-- Интерфейс голосования -->
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="submitVote()" id="submitVoteBtn">
+                        Отправить оценку
+                    </button>
+                </div>
+                
+                <!-- Ожидание результатов -->
+                <div class="step" id="expertWaiting">
+                    <div class="waiting-container">
+                        <h2>Оценка отправлена!</h2>
+                        <div class="loading-spinner"></div>
+                        <p>Ожидайте результатов от администратора</p>
+                        <p class="experts-completed">
+                            <span id="completedCount">0</span> из <span id="totalExpertsCount">0</span> экспертов завершили оценку
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Результаты для эксперта -->
+                <div class="step" id="expertResults">
+                    <h2>Результаты оценки</h2>
+                    <div id="expertResultsContainer"></div>
+                    <button class="btn btn-secondary" onclick="leaveSession()">Выйти</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
