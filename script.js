@@ -265,8 +265,27 @@ function showExpertVoting(session) {
     
     const container = document.getElementById('expertVotingContainer');
     
-    // Простой интерфейс голосования
-    container.innerHTML = `
+    // Интерфейс голосования в зависимости от метода
+    switch(session.method) {
+        case 'direct':
+            container.innerHTML = renderDirectRatingInterface(session);
+            break;
+        case 'ranking':
+            container.innerHTML = renderRankingInterface(session);
+            break;
+        case 'pairwise':
+            container.innerHTML = renderPairwiseInterface(session);
+            break;
+        default:
+            container.innerHTML = renderDirectRatingInterface(session);
+    }
+    
+    console.log('🎯 Эксперт начал голосование');
+}
+
+// Рендер интерфейса непосредственной оценки
+function renderDirectRatingInterface(session) {
+    return `
         <div class="voting-interface">
             <h3>🎯 Оценка объектов</h3>
             <p><strong>Сессия:</strong> ${session.name}</p>
@@ -286,14 +305,92 @@ function showExpertVoting(session) {
                     </div>
                 `).join('')}
             </div>
-            
-            <button class="btn btn-success" onclick="submitVote()" style="margin-top: 20px;">
-                ✅ Отправить оценку
-            </button>
         </div>
     `;
+}
+
+// Рендер интерфейса ранжирования
+function renderRankingInterface(session) {
+    return `
+        <div class="voting-interface">
+            <h3>🏆 Ранжирование объектов</h3>
+            <p><strong>Сессия:</strong> ${session.name}</p>
+            <p><strong>Метод:</strong> ${getMethodName(session.method)}</p>
+            <p><strong>Ваше имя:</strong> ${currentExpert.name}</p>
+            
+            <div class="objects-list">
+                <h4>Расставьте приоритеты (1 - наивысший):</h4>
+                <div id="rankingList">
+                    ${session.objects.map((object, index) => `
+                        <div class="object-card ranking-item" data-index="${index}">
+                            <div class="object-name">${object}</div>
+                            <div class="ranking-controls">
+                                <input type="number" class="ranking-input" min="1" max="${session.objects.length}" 
+                                       value="${index + 1}" data-object="${object}">
+                                <span>место</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Рендер интерфейса парного сравнения
+function renderPairwiseInterface(session) {
+    let pairs = [];
+    for (let i = 0; i < session.objects.length; i++) {
+        for (let j = i + 1; j < session.objects.length; j++) {
+            pairs.push({
+                obj1: session.objects[i],
+                obj2: session.objects[j]
+            });
+        }
+    }
     
-    console.log('🎯 Эксперт начал голосование');
+    return `
+        <div class="voting-interface">
+            <h3>⚖️ Парное сравнение</h3>
+            <p><strong>Сессия:</strong> ${session.name}</p>
+            <p><strong>Метод:</strong> ${getMethodName(session.method)}</p>
+            <p><strong>Ваше имя:</strong> ${currentExpert.name}</p>
+            
+            <div class="objects-list">
+                <h4>Выберите более предпочтительный объект:</h4>
+                ${pairs.map((pair, index) => `
+                    <div class="object-card">
+                        <div class="object-name">Сравнение ${index + 1}</div>
+                        <div class="pair-options">
+                            <div class="pair-option" onclick="selectPairOption(this, '${pair.obj1}', '${pair.obj2}')">
+                                <h4>${pair.obj1}</h4>
+                                <p>Выбрать этот объект</p>
+                            </div>
+                            <div class="pair-option" onclick="selectPairOption(this, '${pair.obj2}', '${pair.obj1}')">
+                                <h4>${pair.obj2}</h4>
+                                <p>Выбрать этот объект</p>
+                            </div>
+                        </div>
+                        <div class="selected-pair" id="selectedPair${index}"></div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Функция выбора парного сравнения
+function selectPairOption(element, selected, other) {
+    // Снимаем выделение с других опций в этой паре
+    const pairOptions = element.parentElement.querySelectorAll('.pair-option');
+    pairOptions.forEach(opt => opt.classList.remove('selected'));
+    
+    // Выделяем выбранную опцию
+    element.classList.add('selected');
+    
+    // Сохраняем выбор
+    const pairIndex = Array.from(element.closest('.object-card').parentElement.children).indexOf(element.closest('.object-card'));
+    document.getElementById(`selectedPair${pairIndex}`).textContent = `Выбрано: ${selected}`;
 }
 
 // Отправка оценки экспертом
@@ -301,12 +398,29 @@ function submitVote() {
     if (!currentSession || !currentExpert) return;
     
     const session = sessions[currentSession.id];
-    const sliders = document.querySelectorAll('.rating-slider');
-    const votes = {};
+    let votes = {};
     
-    session.objects.forEach((object, index) => {
-        votes[object] = parseInt(sliders[index].value) || 0;
-    });
+    // Собираем голоса в зависимости от метода
+    switch(session.method) {
+        case 'direct':
+            const sliders = document.querySelectorAll('.rating-slider');
+            session.objects.forEach((object, index) => {
+                votes[object] = parseInt(sliders[index].value) || 0;
+            });
+            break;
+        case 'ranking':
+            const rankingInputs = document.querySelectorAll('.ranking-input');
+            session.objects.forEach((object, index) => {
+                votes[object] = parseInt(rankingInputs[index].value) || 0;
+            });
+            break;
+        case 'pairwise':
+            // Для парного сравнения - пока просто заглушка
+            session.objects.forEach(object => {
+                votes[object] = 0; // В реальном приложении здесь будет логика обработки парных сравнений
+            });
+            break;
+    }
     
     // Сохраняем оценку
     session.votes[currentExpert.id] = {
@@ -325,6 +439,7 @@ function submitVote() {
     updateCompletedCount();
     console.log('✅ Оценка отправлена:', votes);
     
+    // Оповещаем администратора
     alert('✅ Ваша оценка отправлена! Ожидайте результатов.');
 }
 
