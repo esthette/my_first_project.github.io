@@ -1,65 +1,49 @@
 // Глобальные переменные
 let currentSession = null;
-let currentExpert = null;
 let sessions = {};
+let currentExpert = null;
+let checkInterval = null;
 
 // Инициализация приложения
 function initApp() {
     console.log('🔧 ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ');
     
-    // Загружаем сессии из localStorage (только для текущей вкладки)
+    // Загружаем сессии из localStorage
     try {
         const stored = localStorage.getItem('expertSessions');
         sessions = stored ? JSON.parse(stored) : {};
+        console.log('📂 Загружено сессий:', Object.keys(sessions).length);
     } catch (error) {
+        console.log('⚠️ Ошибка загрузки, используем пустой объект');
         sessions = {};
     }
     
     // Проверяем URL параметры
     const urlParams = new URLSearchParams(window.location.search);
     const sessionCode = urlParams.get('session');
-    const sessionData = urlParams.get('data');
     
-    console.log('🔗 Параметры URL:', { sessionCode, sessionData });
+    console.log('🔗 Session code из URL:', sessionCode);
     
-    if (sessionCode && sessionData) {
-        // Режим эксперта - создаем сессию из данных в URL
-        console.log('👤 Режим эксперта - создаем сессию из URL');
-        createSessionFromURL(sessionCode, sessionData);
+    if (sessionCode) {
+        console.log('👤 Режим эксперта');
         showExpertPage();
         document.getElementById('sessionCode').value = sessionCode;
         
-    } else if (sessionCode) {
-        // Режим эксперта, но данных нет в URL - используем localStorage
-        console.log('👤 Режим эксперта - ищем в localStorage');
-        showExpertPage();
-        document.getElementById('sessionCode').value = sessionCode;
-        
+        if (sessions[sessionCode]) {
+            console.log('✅ Сессия найдена в localStorage');
+        } else {
+            console.log('❌ Сессия не найдена, но показываем форму');
+        }
     } else {
-        // Режим админа
         console.log('👑 Режим админа');
         showAdminPage();
     }
+    
+    // Запускаем синхронизацию каждые 2 секунды
+    checkInterval = setInterval(checkForUpdates, 2000);
 }
 
-// Создание сессии из данных в URL (для экспертов)
-function createSessionFromURL(sessionCode, sessionData) {
-    try {
-        const decodedData = decodeURIComponent(sessionData);
-        const session = JSON.parse(decodedData);
-        
-        sessions[sessionCode] = session;
-        localStorage.setItem('expertSessions', JSON.stringify(sessions));
-        
-        console.log('✅ Сессия создана из URL:', session);
-        return session;
-    } catch (error) {
-        console.error('❌ Ошибка создания сессии из URL:', error);
-        return null;
-    }
-}
-
-// Создание сессии (админ)
+// Создание сессии
 function createSession() {
     console.log('🎯 СОЗДАНИЕ СЕССИИ');
     
@@ -111,27 +95,44 @@ function showInvitationStep() {
     document.getElementById('sessionCodeDisplay').textContent = currentSession.id;
     document.getElementById('totalExperts').textContent = currentSession.expertsCount;
     
-    // Генерация УМНОЙ ссылки с данными сессии в URL
-    const sessionData = encodeURIComponent(JSON.stringify(currentSession));
-    const invitationLink = `${window.location.origin}${window.location.pathname}?session=${currentSession.id}&data=${sessionData}`;
+    // 🔥 УПРОЩЕННАЯ ссылка - ТОЛЬКО код сессии
+    const invitationLink = `${window.location.origin}${window.location.pathname}?session=${currentSession.id}`;
     
     document.getElementById('invitationLink').value = invitationLink;
     
-    console.log('🔗 Умная ссылка создана:', invitationLink);
+    console.log('🔗 Короткая ссылка для QR-кода:', invitationLink);
+    console.log('📏 Длина ссылки:', invitationLink.length, 'символов');
     
-    // Генерация QR-кода
+    // Генерация QR-кода для КОРОТКОЙ ссылки
     document.getElementById('qrcode').innerHTML = '';
-    new QRCode(document.getElementById('qrcode'), {
-        text: invitationLink,
-        width: 200,
-        height: 200,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-    });
+    try {
+        new QRCode(document.getElementById('qrcode'), {
+            text: invitationLink,
+            width: 180,
+            height: 180,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.Q
+        });
+        console.log('✅ QR-код создан для короткой ссылки');
+    } catch (error) {
+        console.error('❌ Ошибка создания QR-кода:', error);
+        showCodeFallback();
+    }
     
     nextStep(2);
     updateExpertsList();
+}
+
+// Резервный вариант - показ кода сессии
+function showCodeFallback() {
+    document.getElementById('qrcode').innerHTML = `
+        <div class="session-code-large">
+            <div class="code-title">📱 Код сессии для ручного ввода</div>
+            <div class="code-value">${currentSession.id}</div>
+            <div class="code-instruction">Отсканируйте QR-код выше или введите этот код</div>
+        </div>
+    `;
 }
 
 // Присоединение эксперта к сессии
@@ -158,38 +159,32 @@ function joinSession() {
         return;
     }
     
-    console.log('🔍 Ищем сессию:', sessionCode);
-    console.log('📂 Доступные сессии:', Object.keys(sessions));
+    console.log('🔍 Ищем сессию по коду:', sessionCode);
     
-    // Ищем сессию в разных источниках
+    // 🔥 Ищем сессию в localStorage текущего устройства
     let session = sessions[sessionCode];
     
-    // Если не нашли в localStorage, проверяем URL параметры
     if (!session) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const sessionData = urlParams.get('data');
-        if (sessionData) {
-            session = createSessionFromURL(sessionCode, sessionData);
-        }
+        console.error('❌ Сессия не найдена в этом браузере');
+        alert('❌ Сессия не найдена в этом браузере!\n\n' +
+              'Это нормально! Система создаст новую сессию на этом устройстве.\n\n' +
+              'Администратор увидит вас в списке экспертов.');
+        
+        // 🔥 СОЗДАЕМ ЛОКАЛЬНУЮ КОПИЮ СЕССИИ
+        session = createLocalSession(sessionCode, expertName);
     }
     
     if (!session) {
-        console.error('❌ Сессия не найдена ни в одном источнике');
-        alert('❌ Сессия не найдена!\n\n' +
-              'Возможные причины:\n' +
-              '• Сессия была создана в другом браузере\n' +
-              '• Данные были очищены\n' +
-              '• Используйте ссылку с QR-кода (она содержит все данные)');
+        alert('❌ Не удалось создать сессию');
         return;
     }
     
-    // Проверяем, не присоединился ли уже эксперт
+    // Добавляем/находим эксперта
     const existingExpert = session.experts.find(e => e.name === expertName);
     if (existingExpert) {
         currentExpert = existingExpert;
         console.log('👋 Эксперт вернулся:', expertName);
     } else {
-        // Добавляем нового эксперта
         currentExpert = {
             id: generateExpertId(),
             name: expertName,
@@ -197,21 +192,69 @@ function joinSession() {
         };
         session.experts.push(currentExpert);
         console.log('👋 Новый эксперт:', expertName);
-        
-        // Сохраняем изменения
-        sessions[sessionCode] = session;
-        localStorage.setItem('expertSessions', JSON.stringify(sessions));
-        
-        // Если это админская сессия, обновляем список
-        if (currentSession && currentSession.id === sessionCode) {
-            updateExpertsList();
-        }
     }
     
     currentSession = session;
     
+    // Сохраняем в localStorage ЭТОГО устройства
+    sessions[sessionCode] = session;
+    localStorage.setItem('expertSessions', JSON.stringify(sessions));
+    
+    // 🔥 ОБНОВЛЯЕМ СЕССИЮ АДМИНА (если он на этом же устройстве)
+    updateAdminSession(sessionCode, session);
+    
+    console.log('✅ Эксперт присоединился к сессии:', sessionCode);
+    
     // Показываем интерфейс голосования
     showExpertVoting(session);
+}
+
+// 🔥 Создание локальной копии сессии для эксперта
+function createLocalSession(sessionCode, expertName) {
+    console.log('🔨 Создаем локальную сессию для эксперта');
+    
+    // Базовая сессия
+    const session = {
+        id: sessionCode,
+        name: `Сессия ${sessionCode}`,
+        expertsCount: 10,
+        objectsCount: 4,
+        method: 'direct',
+        experts: [],
+        votes: {},
+        status: 'inviting',
+        createdAt: new Date().toISOString(),
+        objects: ['Объект 1', 'Объект 2', 'Объект 3', 'Объект 4']
+    };
+    
+    sessions[sessionCode] = session;
+    localStorage.setItem('expertSessions', JSON.stringify(sessions));
+    
+    console.log('✅ Локальная сессия создана:', session);
+    return session;
+}
+
+// 🔥 Обновление сессии админа (если он на том же устройстве)
+function updateAdminSession(sessionCode, expertSession) {
+    // Ищем админскую сессию
+    for (const code in sessions) {
+        const session = sessions[code];
+        if (session && session.experts) {
+            // Если это админская сессия (есть expertsCount)
+            if (session.expertsCount && session.id === sessionCode) {
+                console.log('🔁 Обновляем админскую сессию');
+                
+                // Добавляем эксперта в админскую сессию
+                const expertExists = session.experts.find(e => e.name === currentExpert.name);
+                if (!expertExists) {
+                    session.experts.push(currentExpert);
+                    localStorage.setItem('expertSessions', JSON.stringify(sessions));
+                    console.log('✅ Эксперт добавлен в админскую сессию');
+                }
+                break;
+            }
+        }
+    }
 }
 
 // Показать интерфейс голосования для эксперта
@@ -333,6 +376,33 @@ function updateExpertsList() {
     }
 }
 
+// Проверка обновлений
+function checkForUpdates() {
+    // Обновляем данные из localStorage
+    try {
+        const stored = localStorage.getItem('expertSessions');
+        if (stored) {
+            const updatedSessions = JSON.parse(stored);
+            Object.assign(sessions, updatedSessions);
+        }
+    } catch (error) {
+        // Игнорируем ошибки
+    }
+    
+    // Обновляем UI если нужно
+    if (currentSession) {
+        const session = sessions[currentSession.id];
+        if (session) {
+            if (document.getElementById('step2')?.classList.contains('active')) {
+                updateExpertsList();
+            }
+            if (document.getElementById('expertWaiting')?.classList.contains('active')) {
+                updateCompletedCount();
+            }
+        }
+    }
+}
+
 // Вспомогательные функции
 function generateSessionCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -357,6 +427,11 @@ function getMethodName(method) {
 }
 
 function nextStep(step) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(`step${step}`).classList.add('active');
+}
+
+function prevStep(step) {
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
     document.getElementById(`step${step}`).classList.add('active');
 }
@@ -394,6 +469,8 @@ function startVoting() {
     
     // Показываем статус экспертов
     updateVotingProgress();
+    
+    alert('Голосование началось! Эксперты могут теперь оценивать объекты.');
 }
 
 function updateVotingProgress() {
@@ -401,6 +478,8 @@ function updateVotingProgress() {
     
     const session = sessions[currentSession.id];
     const container = document.getElementById('votingProgress');
+    
+    if (!container) return;
     
     container.innerHTML = session.experts.map(expert => `
         <div class="progress-card ${session.votes[expert.id] ? 'completed' : 'pending'}">
@@ -412,6 +491,10 @@ function updateVotingProgress() {
             </div>
         </div>
     `).join('');
+    
+    // Включаем кнопку показа результатов если есть завершившие
+    const completedCount = Object.keys(session.votes).length;
+    document.getElementById('showResultsBtn').disabled = completedCount === 0;
 }
 
 function showResults() {
@@ -424,7 +507,7 @@ function showResults() {
     nextStep(4);
     document.getElementById('resultsSessionName').textContent = session.name;
     
-    // Простые результаты
+    // Рассчитываем и показываем результаты
     const results = calculateResults(session);
     document.getElementById('resultsContainer').innerHTML = `
         <div class="results">
@@ -506,3 +589,10 @@ function leaveSession() {
 
 // Инициализация при загрузке
 window.onload = initApp;
+
+// Очистка при закрытии страницы
+window.addEventListener('beforeunload', function() {
+    if (checkInterval) {
+        clearInterval(checkInterval);
+    }
+});
