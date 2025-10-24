@@ -120,6 +120,10 @@ input:focus, select:focus {
     font-size: 0.9rem;
 }
 
+.btn-success {
+    background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+}
+
 .btn:disabled {
     background: #6c757d;
     cursor: not-allowed;
@@ -168,18 +172,68 @@ input:focus, select:focus {
     font-family: 'Courier New', monospace;
 }
 
-/* QR код */
+/* Улучшенное отображение QR-кода */
 #qrcode {
     display: flex;
     justify-content: center;
-    margin: 15px 0;
+    margin: 20px 0;
+    min-height: 200px;
+    align-items: center;
+    flex-direction: column;
 }
 
 #qrcode canvas {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 10px;
+    border: 3px solid #667eea;
+    border-radius: 15px;
+    padding: 15px;
     background: white;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.qr-instruction {
+    margin-top: 15px;
+    text-align: center;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.qr-instruction .highlight {
+    color: #667eea;
+    font-weight: 600;
+}
+
+/* Резервное отображение кода */
+.session-code-large {
+    text-align: center;
+    padding: 25px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 15px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.code-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.code-value {
+    font-size: 3.5rem;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 4px;
+    margin: 20px 0;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+}
+
+.code-instruction {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-top: 15px;
 }
 
 /* Список экспертов */
@@ -205,6 +259,7 @@ input:focus, select:focus {
     display: flex;
     align-items: center;
     gap: 10px;
+    justify-content: space-between;
 }
 
 .expert-avatar {
@@ -221,6 +276,11 @@ input:focus, select:focus {
 
 .expert-name {
     font-weight: 500;
+    flex: 1;
+}
+
+.expert-status {
+    font-size: 1.2rem;
 }
 
 .empty-state {
@@ -280,13 +340,6 @@ input:focus, select:focus {
     border-left-color: #ffc107;
 }
 
-.expert-status {
-    display: flex;
-    justify-content: between;
-    align-items: center;
-    margin-top: 10px;
-}
-
 .status-badge {
     padding: 4px 8px;
     border-radius: 12px;
@@ -344,6 +397,95 @@ input:focus, select:focus {
     color: #6c757d;
 }
 
+/* Стили для голосования */
+.voting-interface {
+    margin: 20px 0;
+}
+
+.objects-list {
+    margin: 25px 0;
+}
+
+.object-card {
+    background: white;
+    padding: 20px;
+    margin: 15px 0;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #667eea;
+}
+
+.object-name {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: #495057;
+}
+
+.rating-slider {
+    width: 100%;
+    margin: 10px 0;
+}
+
+.rating-display {
+    text-align: center;
+    margin-top: 10px;
+    font-weight: 500;
+}
+
+.rating-value {
+    font-weight: bold;
+    color: #667eea;
+    font-size: 1.2rem;
+}
+
+.test-voting {
+    margin: 20px 0;
+}
+
+.rating-input {
+    width: 80px;
+    padding: 8px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+}
+
+/* Результаты */
+.results {
+    margin: 20px 0;
+}
+
+.winner {
+    text-align: center;
+    padding: 25px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 15px;
+    margin: 25px 0;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.results-placeholder {
+    text-align: center;
+    padding: 40px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.session-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
 /* Адаптивность */
 @media (max-width: 768px) {
     .container {
@@ -363,8 +505,16 @@ input:focus, select:focus {
         font-size: 2rem;
     }
     
+    .code-value {
+        font-size: 2.5rem;
+    }
+    
     h1 {
         font-size: 1.8rem;
+    }
+    
+    .session-actions {
+        flex-direction: column;
     }
 }
 
@@ -373,93 +523,34 @@ input:focus, select:focus {
     animation: fadeIn 0.5s ease-in;
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.pulse {
-    animation: pulse 2s infinite;
-}
-
-/* Стили для голосования */
-.voting-interface {
-    margin: 20px 0;
-}
-
-.object-card {
-    background: white;
-    padding: 20px;
-    margin: 15px 0;
-    border-radius: 10px;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-    border-left: 4px solid #667eea;
-}
-
-.rating-slider {
-    width: 100%;
-    margin: 10px 0;
-}
-
-.rating-value {
-    text-align: center;
-    font-weight: bold;
-    color: #667eea;
-    font-size: 1.2rem;
-}
-
-.ranking-list {
-    list-style: none;
-    margin: 15px 0;
-}
-
-.ranking-item {
-    background: white;
-    padding: 15px;
-    margin: 8px 0;
-    border-radius: 8px;
-    border: 2px solid #e9ecef;
-    cursor: move;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.ranking-item.dragging {
-    opacity: 0.5;
-    border: 2px dashed #667eea;
-}
-
-.ranking-number {
-    background: #667eea;
-    color: white;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-}
-
-.comparison-table {
+/* Таблицы */
+.voting-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 15px 0;
+    margin-top: 20px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    overflow: hidden;
 }
 
-.comparison-table th, .comparison-table td {
-    padding: 12px;
+.voting-table th, .voting-table td {
+    padding: 15px;
     text-align: center;
-    border: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
 }
 
-.comparison-table th {
-    background: #667eea;
+.voting-table th {
+    background-color: #667eea;
     color: white;
+    font-weight: 600;
 }
 
-.comparison-option {
-    margin: 0 10px;
+.voting-table tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.navigation {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
 }
