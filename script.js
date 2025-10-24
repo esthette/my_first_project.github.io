@@ -448,3 +448,152 @@ function updateCompletedCount() {
     
     document.getElementById('completedCount').textContent = completedCount;
     document.getElementById('totalExpertsCount').textContent = totalExperts;
+}
+
+// Обновление списка экспертов
+function updateExpertsList() {
+    if (!currentSession) return;
+    
+    const session = sessions[currentSession.id];
+    const container = document.getElementById('connectedExperts');
+    const connectedCount = session.experts.length;
+    
+    document.getElementById('connectedCount').textContent = connectedCount;
+    document.getElementById('totalExperts').textContent = session.expertsCount;
+    
+    if (connectedCount === 0) {
+        container.innerHTML = '<div class="empty-state">Пока никто не присоединился</div>';
+        document.getElementById('startVotingBtn').disabled = true;
+    } else {
+        container.innerHTML = '';
+        session.experts.forEach(expert => {
+            const expertElement = document.createElement('div');
+            expertElement.className = 'expert-item';
+            expertElement.innerHTML = `
+                <div class="expert-avatar">${expert.name.charAt(0)}</div>
+                <div class="expert-name">${expert.name}</div>
+            `;
+            container.appendChild(expertElement);
+        });
+        
+        // Включаем кнопку если есть хотя бы один эксперт
+        document.getElementById('startVotingBtn').disabled = connectedCount === 0;
+    }
+}
+
+// Проверка обновлений
+function checkForUpdates() {
+    // Обновляем данные из localStorage
+    const updatedSessions = JSON.parse(localStorage.getItem('expertSessions')) || {};
+    Object.assign(sessions, updatedSessions);
+    
+    if (currentSession && sessions[currentSession.id]) {
+        currentSession = sessions[currentSession.id];
+        
+        // Обновляем список экспертов если мы на странице админа
+        if (document.getElementById('step2').classList.contains('active')) {
+            updateExpertsList();
+        }
+        
+        // Обновляем счетчик завершивших если мы в режиме ожидания
+        if (document.getElementById('expertWaiting').classList.contains('active')) {
+            updateCompletedCount();
+        }
+    }
+}
+
+// Вспомогательные функции
+function generateSessionCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+function generateExpertId() {
+    return 'expert_' + Math.random().toString(36).substr(2, 9);
+}
+
+function nextStep(step) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(`step${step}`).classList.add('active');
+}
+
+function prevStep(step) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(`step${step}`).classList.add('active');
+}
+
+// Заглушки для функций, которые нужно реализовать
+function startVoting() {
+    if (!currentSession) return;
+    
+    const session = sessions[currentSession.id];
+    session.status = 'voting';
+    session.votingStartedAt = new Date().toISOString();
+    localStorage.setItem('expertSessions', JSON.stringify(sessions));
+    
+    nextStep(3);
+    document.getElementById('votingSessionName').textContent = session.name;
+    
+    alert('Голосование началось! Эксперты могут теперь оценивать объекты.');
+}
+
+function showResults() {
+    if (!currentSession) return;
+    
+    const session = sessions[currentSession.id];
+    session.status = 'completed';
+    localStorage.setItem('expertSessions', JSON.stringify(sessions));
+    
+    nextStep(4);
+    document.getElementById('resultsSessionName').textContent = session.name;
+    
+    // Здесь будет расчет и отображение результатов
+    document.getElementById('resultsContainer').innerHTML = `
+        <div class="results-placeholder">
+            <h3>Результаты будут отображены здесь</h3>
+            <p>Завершено оценок: ${Object.keys(session.votes).length} из ${session.experts.length}</p>
+        </div>
+    `;
+}
+
+function createNewSession() {
+    // Сброс текущей сессии
+    currentSession = null;
+    currentExpert = null;
+    
+    // Возврат к первому шагу
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step1').classList.add('active');
+    
+    // Очистка формы
+    document.getElementById('sessionName').value = '';
+    document.getElementById('expertsCount').value = '5';
+    document.getElementById('objectsCount').value = '4';
+}
+
+function exportResults() {
+    alert('Функция экспорта результатов будет реализована в будущем');
+}
+
+function leaveSession() {
+    currentExpert = null;
+    showExpertPage();
+    
+    // Очистка формы
+    document.getElementById('expertName').value = '';
+    document.getElementById('sessionCode').value = '';
+}
+
+// Инициализация при загрузке
+window.onload = initApp;
+
+// Очистка при закрытии страницы
+window.addEventListener('beforeunload', function() {
+    if (checkInterval) {
+        clearInterval(checkInterval);
+    }
+});
