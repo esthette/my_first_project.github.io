@@ -149,7 +149,7 @@ function joinSession() {
             method: 'direct',
             experts: [],
             votes: {},
-            status: 'voting',
+            status: 'voting', // Изначально в состоянии голосования
             createdAt: new Date().toISOString(),
             objects: ['Объект 1', 'Объект 2', 'Объект 3', 'Объект 4']
         };
@@ -175,6 +175,7 @@ function joinSession() {
     currentSession = session;
     localStorage.setItem('expertSessions', JSON.stringify(sessions));
 
+    // Показываем интерфейс голосования, а не экран ожидания
     showExpertVoting(session);
 }
 
@@ -298,6 +299,7 @@ function submitVote() {
             break;
     }
 
+    // Сохраняем голос
     session.votes[currentExpert.id] = {
         expert: currentExpert.name,
         votes: votes,
@@ -313,6 +315,11 @@ function submitVote() {
 
     updateCompletedCount();
     alert('✅ Ваша оценка успешно отправлена!');
+
+    // Добавлено: Проверяем, есть ли уже голос у эксперта
+    // Если да, то обновляем UI
+    // Это уже делается в updateCompletedCount(), но можно вызвать явно
+    // updateCompletedCount(); // Вызов уже есть выше
 }
 
 // Обновление счётчика завершивших
